@@ -131,18 +131,14 @@ app.post('/scrape-html', async (req, res) => {
   const html = req.body.html;
   const villages = scrapeVillages(html);
 
-  for (const village of villages) {
-    const exists = await Village.findOne({
-      districtId: village.districtId,
-      talukId: village.talukId,
-      hobliId: village.hobliId,
-      villageId: village.villageId
-    });
+  // Show loader before inserting data
+  console.log('Loading...');
 
-    if (!exists) {
-      await Village.create(village);
-    }
-  }
+  // Insert new villages into the database
+  await Village.insertMany(villages);
+
+  // Hide loader after insertion is complete
+  console.log('Loading complete.');
 
   const allVillages = await Village.find();
   res.json({ villages: allVillages });
