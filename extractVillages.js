@@ -84,20 +84,21 @@ app.get('/', async (req, res) => {
 
         <h2>The length of extracted_villages file is <span id="villagesLength">${villagesLength}</span></h2>
 
-        <h2>Extracted Villages</h2>
-        <pre id="extractedVillages"></pre>
+        <div id="loader" style="display: none;">Loading...</div>
 
         <script>
             async function fetchVillagesData() {
                 const response = await fetch('/extracted_villages.json');
                 const villagesData = await response.json();
-                document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
                 document.getElementById('villagesLength').textContent = villagesData.length;
             }
 
             document.getElementById('htmlForm').onsubmit = async function(event) {
                 event.preventDefault();
                 const htmlInput = document.getElementById('htmlInput').value;
+                const loader = document.getElementById('loader');
+
+                loader.style.display = 'block'; // Show the loader
 
                 try {
                     const response = await fetch('/scrape-html', {
@@ -112,7 +113,9 @@ app.get('/', async (req, res) => {
                     fetchVillagesData();
                 } catch (error) {
                     console.log('Error during fetch:', error);
-                    document.getElementById('extractedVillages').textContent = \`Error: \${error.message}\`;
+                    document.getElementById('villagesLength').textContent = \`Error: \${error.message}\`;
+                } finally {
+                    loader.style.display = 'none'; // Hide the loader
                 }
             };
 
