@@ -1,0 +1,16 @@
+{
+  "name": "fetch-villages",
+  "version": "1.0.0",
+  "description": "",
+  "main": "extractVillages.js",
+  "scripts": {
+    "start": "node extractVillages.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "express": "^4.19.2",
+    "fs": "^0.0.1-security"
+  }
+}
+
+
