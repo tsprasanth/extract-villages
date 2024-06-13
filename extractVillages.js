@@ -11,7 +11,7 @@ const port = process.env.PORT || 3000;
 // MongoDB connection
 const uri = process.env.MONGODB_URI;
 if (!uri) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
+  throw new Error("Please define the MONGODB_URI environment variable inside .env");
 }
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -27,26 +27,6 @@ const villageSchema = new mongoose.Schema({
   villageValue: String
 });
 const Village = mongoose.model('Village', villageSchema);
-
-// Function to remove duplicates
-const removeDuplicates = async (data) => {
-  const uniqueData = [];
-  const dataSet = new Set();
-
-  for (const item of data) {
-    const identifier = `${item.districtId}-${item.talukId}-${item.hobliId}-${item.villageId}`;
-    if (!dataSet.has(identifier)) {
-      dataSet.add(identifier);
-      uniqueData.push(item);
-    }
-  }
-
-  // Clear the collection and insert unique data
-  await Village.deleteMany({});
-  await Village.insertMany(uniqueData);
-
-  return uniqueData;
-};
 
 // Function to scrape the HTML and extract village data
 const scrapeVillages = (html) => {
@@ -111,7 +91,7 @@ app.get('/', async (req, res) => {
             async function fetchVillagesData() {
                 const response = await fetch('/extracted_villages.json');
                 const villagesData = await response.json();
-                //document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
+                document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
                 document.getElementById('villagesLength').textContent = villagesData.length;
             }
 
@@ -148,14 +128,21 @@ app.post('/scrape-html', async (req, res) => {
   const html = req.body.html;
   const villages = scrapeVillages(html);
 
-  // Append new villages to the existing data
-  let allVillages = await Village.find();
-  allVillages = allVillages.concat(villages);
+  for (const village of villages) {
+    const exists = await Village.findOne({
+      districtId: village.districtId,
+      talukId: village.talukId,
+      hobliId: village.hobliId,
+      villageId: village.villageId
+    });
 
-  // Remove duplicates and update database
-  const uniqueVillages = await removeDuplicates(allVillages);
+    if (!exists) {
+      await Village.create(village);
+    }
+  }
 
-  res.json({ villages: uniqueVillages });
+  const allVillages = await Village.find();
+  res.json({ villages: allVillages });
 });
 
 app.listen(port, () => {
