@@ -89,9 +89,18 @@ app.get('/', (req, res) => {
         <script>
             async function fetchVillagesData() {
                 const response = await fetch('/extracted_villages.json');
-                const villagesData = await response.json();
-                document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
-                document.getElementById('villagesLength').textContent = villagesData.length;
+                const contentType = response.headers.get('content-type');
+
+                if (contentType && contentType.includes('application/json')) {
+                    const villagesData = await response.json();
+                    document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
+                    document.getElementById('villagesLength').textContent = villagesData.length;
+                } else {
+                    const responseText = await response.text();
+                    console.log('Unexpected response content type:', contentType);
+                    console.log('Response text:', responseText);
+                    document.getElementById('extractedVillages').textContent = 'Error: Expected JSON response';
+                }
             }
 
             document.getElementById('htmlForm').onsubmit = async function(event) {
@@ -110,6 +119,7 @@ app.get('/', (req, res) => {
 
                     fetchVillagesData();
                 } catch (error) {
+                    console.log('Error during fetch:', error);
                     document.getElementById('extractedVillages').textContent = \`Error: \${error.message}\`;
                 }
             };
