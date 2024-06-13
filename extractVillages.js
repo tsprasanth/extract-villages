@@ -1,11 +1,35 @@
 const express = require('express');
 const cheerio = require('cheerio');
-const fs = require('fs');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+
+dotenv.config();  // Load environment variables from .env file
+
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// MongoDB connection
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
+}
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+
+// Define a schema and model for the villages
+const villageSchema = new mongoose.Schema({
+  districtId: String,
+  districtValue: String,
+  talukId: String,
+  talukValue: String,
+  hobliId: String,
+  hobliValue: String,
+  villageId: String,
+  villageValue: String
+});
+const Village = mongoose.model('Village', villageSchema);
 
 // Function to remove duplicates
-const removeDuplicates = (data) => {
+const removeDuplicates = async (data) => {
   const uniqueData = [];
   const dataSet = new Set();
 
@@ -16,6 +40,10 @@ const removeDuplicates = (data) => {
       uniqueData.push(item);
     }
   }
+
+  // Clear the collection and insert unique data
+  await Village.deleteMany({});
+  await Village.insertMany(uniqueData);
 
   return uniqueData;
 };
@@ -47,22 +75,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Serve the extracted_villages.json file
-app.get('/extracted_villages.json', (req, res) => {
-  if (fs.existsSync('extracted_villages.json')) {
-    res.sendFile(__dirname + '/extracted_villages.json');
-  } else {
-    res.json([]);
-  }
+// Serve the extracted_villages.json file (from MongoDB)
+app.get('/extracted_villages.json', async (req, res) => {
+  const villages = await Village.find();
+  res.json(villages);
 });
 
-app.get('/', (req, res) => {
-  let villagesLength = 'N/A';
-
-  if (fs.existsSync('extracted_villages.json')) {
-    const extractedVillages = JSON.parse(fs.readFileSync('extracted_villages.json', 'utf8'));
-    villagesLength = extractedVillages.length;
-  }
+app.get('/', async (req, res) => {
+  const villages = await Village.find();
+  const villagesLength = villages.length;
 
   res.send(`
     <!DOCTYPE html>
@@ -89,18 +110,9 @@ app.get('/', (req, res) => {
         <script>
             async function fetchVillagesData() {
                 const response = await fetch('/extracted_villages.json');
-                const contentType = response.headers.get('content-type');
-
-                if (contentType && contentType.includes('application/json')) {
-                    const villagesData = await response.json();
-                    document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
-                    document.getElementById('villagesLength').textContent = villagesData.length;
-                } else {
-                    const responseText = await response.text();
-                    console.log('Unexpected response content type:', contentType);
-                    console.log('Response text:', responseText);
-                    document.getElementById('extractedVillages').textContent = 'Error: Expected JSON response';
-                }
+                const villagesData = await response.json();
+                //document.getElementById('extractedVillages').textContent = JSON.stringify(villagesData, null, 2);
+                document.getElementById('villagesLength').textContent = villagesData.length;
             }
 
             document.getElementById('htmlForm').onsubmit = async function(event) {
@@ -132,25 +144,18 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.post('/scrape-html', (req, res) => {
+app.post('/scrape-html', async (req, res) => {
   const html = req.body.html;
   const villages = scrapeVillages(html);
 
-  let allVillages = [];
-  if (fs.existsSync('extracted_villages.json')) {
-    allVillages = JSON.parse(fs.readFileSync('extracted_villages.json', 'utf8'));
-  }
-
   // Append new villages to the existing data
+  let allVillages = await Village.find();
   allVillages = allVillages.concat(villages);
 
-  // Remove duplicates
-  allVillages = removeDuplicates(allVillages);
+  // Remove duplicates and update database
+  const uniqueVillages = await removeDuplicates(allVillages);
 
-  // Save the data to avoid data loss
-  fs.writeFileSync('extracted_villages.json', JSON.stringify(allVillages, null, 2), 'utf-8');
-
-  res.json({ villages });
+  res.json({ villages: uniqueVillages });
 });
 
 app.listen(port, () => {
