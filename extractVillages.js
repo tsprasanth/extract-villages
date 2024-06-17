@@ -31,15 +31,15 @@ const Village = mongoose.model('Village', villageSchema);
 // Function to scrape the HTML and extract village data
 const scrapeVillages = (html) => {
   const $ = cheerio.load(html);
-  const districtId = $('#ctl00_MainContent_ddlCDistrict').val();
-  const districtValue = $('#ctl00_MainContent_ddlCDistrict option:selected').text();
-  const talukId = $('#ctl00_MainContent_ddlCTaluk').val();
-  const talukValue = $('#ctl00_MainContent_ddlCTaluk option:selected').text();
-  const hobliId = $('#ctl00_MainContent_ddlCHobli').val();
-  const hobliValue = $('#ctl00_MainContent_ddlCHobli option:selected').text();
+  const districtId = $('#ctl00_MainContent_ddl_dist').val();
+  const districtValue = $('#ctl00_MainContent_ddl_dist option:selected').text();
+  const talukId = $('#ctl00_MainContent_ddl_taluk1').val();
+  const talukValue = $('#ctl00_MainContent_ddl_taluk1 option:selected').text();
+  const hobliId = $('#ctl00_MainContent_ddl_hobli').val();
+  const hobliValue = $('#ctl00_MainContent_ddl_hobli option:selected').text();
   const villages = [];
 
-  $('#ctl00_MainContent_ddlCVillage option').each((index, element) => {
+  $('#ctl00_MainContent_ddl_village option').each((index, element) => {
     const villageId = $(element).val();
     const villageValue = $(element).text();
     if (villageId !== "0") { // Exclude the "Select Village" option
